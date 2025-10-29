@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import Phone from '@/components/Phone';
 
 export default function Chat({ params }:{ params:{ tripId:string }}) {
   const [msgs, setMsgs] = useState<any[]>([]);
@@ -10,38 +11,29 @@ export default function Chat({ params }:{ params:{ tripId:string }}) {
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { window.location.href = '/auth'; return; }
+      const { data:{ user } } = await supabase.auth.getUser();
+      if (!user) { window.location.href='/auth'; return; }
       setUserId(user.id);
 
-      // ¿es miembro aceptado?
       const { data: m } = await supabase
-        .from('trip_members')
-        .select('estado')
-        .eq('trip_id', params.tripId)
-        .eq('user_id', user.id)
-        .single();
+        .from('trip_members').select('estado')
+        .eq('trip_id', params.tripId).eq('user_id', user.id).single();
 
       if (!m || m.estado !== 'aceptado') { setAllowed(false); return; }
       setAllowed(true);
 
-      // carga mensajes
       const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('trip_id', params.tripId)
+        .from('messages').select('*').eq('trip_id', params.tripId)
         .order('created_at', { ascending: true });
       setMsgs(data || []);
 
-      // suscripción realtime
       const ch = supabase.channel(`chat:${params.tripId}`)
         .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'messages', filter: `trip_id=eq.${params.tripId}` },
-          (payload) => setMsgs(m => [...m, payload.new as any])
-        )
-        .subscribe();
+          { event:'INSERT', schema:'public', table:'messages', filter:`trip_id=eq.${params.tripId}` },
+          (payload)=> setMsgs(prev=>[...prev, payload.new as any])
+        ).subscribe();
 
-      return () => { supabase.removeChannel(ch); };
+      return ()=> { supabase.removeChannel(ch); };
     })();
   }, [params.tripId]);
 
@@ -52,23 +44,23 @@ export default function Chat({ params }:{ params:{ tripId:string }}) {
   }
 
   if (allowed === null) return <div className="p-6">Cargando…</div>;
-  if (allowed === false) return <div className="p-6 text-red-600">No tienes acceso a este chat (debes ser miembro aceptado).</div>;
+  if (allowed === false) return <Phone><div className="p-6 text-red-600">No tienes acceso a este chat.</div></Phone>;
 
   return (
-    <div className="max-w-lg mx-auto p-6 flex flex-col gap-3 h-[80vh]">
-      <h1 className="text-xl font-bold">Chat del viaje</h1>
-      <div className="flex-1 overflow-y-auto space-y-2">
-        {msgs.map((m:any)=> (
-          <div key={m.id} className={`p-2 rounded ${m.user_id===userId?'bg-teal-100 self-end':'bg-gray-100'}`}>
-            {m.body}
-          </div>
-        ))}
+    <Phone>
+      <div className="p-3 flex flex-col h-[680px]">
+        <div className="flex-1 space-y-2 overflow-y-auto">
+          {msgs.map((m:any)=>(
+            <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-2xl ${m.user_id===userId ? 'ml-auto bg-[#14b8a6] text-white rounded-br-sm':'bg-gray-100 rounded-bl-sm'}`}>
+              {m.body}
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex gap-2">
+          <input className="flex-1 rounded-xl border px-3 py-2" value={text} onChange={e=>setText(e.target.value)} placeholder="Escribe un mensaje…" />
+          <button onClick={send} className="rounded-xl bg-[#14b8a6] text-white px-4">Enviar</button>
+        </div>
       </div>
-      <div className="flex gap-2">
-        <input className="flex-1 border rounded px-3 py-2" value={text}
-               onChange={e=>setText(e.target.value)} placeholder="Escribe…" />
-        <button onClick={send} className="bg-teal-600 text-white px-4 py-2 rounded">Enviar</button>
-      </div>
-    </div>
+    </Phone>
   );
 }

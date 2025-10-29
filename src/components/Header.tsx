@@ -18,21 +18,26 @@ export default function Header() {
     window.location.href = '/auth';
   }
 
+  /* OJO: hidden sm:block ⇒ oculto en móvil, visible en ≥640px */
   return (
-    <header className="border-b p-3 flex items-center justify-between">
-      <a href="/" className="font-bold text-teal-600">Wavoo</a>
-      <nav className="flex items-center gap-3">
-        <a href="/explorar" className="text-gray-700">Explorar</a>
-        <a href="/crear" className="text-gray-700">Crear viaje</a>
-        {email ? (
-          <>
-            <a href="/perfil" className="text-gray-700">{email}</a>
-            <button onClick={logout} className="bg-teal-600 text-white px-3 py-1 rounded">Salir</button>
-          </>
-        ) : (
-          <a href="/auth" className="bg-teal-600 text-white px-3 py-1 rounded">Entrar</a>
-        )}
-      </nav>
+    <header className="hidden sm:block sticky top-0 z-50 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+      <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between">
+        <a href="/" className="flex items-center gap-2">
+          <img src="/wavoo_logo.svg" alt="Wavoo" className="h-8 w-auto" style={{minWidth:120}}/>
+        </a>
+        <nav className="flex items-center gap-2">
+          <a href="/explorar" className="px-3 py-1.5 rounded-md hover:bg-gray-100">Explorar</a>
+          <a href="/crear" className="px-3 py-1.5 rounded-md bg-[#14b8a6] text-white hover:opacity-90">Crear viaje</a>
+          {email ? (
+            <>
+              <a href="/perfil" className="hidden md:inline px-3 py-1.5 rounded-md hover:bg-gray-100">{email}</a>
+              <button onClick={logout} className="px-3 py-1.5 rounded-md border hover:bg-gray-50">Salir</button>
+            </>
+          ) : (
+            <a href="/auth" className="px-3 py-1.5 rounded-md border hover:bg-gray-50">Entrar</a>
+          )}
+        </nav>
+      </div>
     </header>
   );
 }
