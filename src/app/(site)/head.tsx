@@ -4,6 +4,9 @@ export default function Head() {
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="alternate icon" href="/icon-192.png" sizes="192x192" />
         <meta name="theme-color" content="#14b8a6" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#ffffff" />
+
       </>
     )
   }
