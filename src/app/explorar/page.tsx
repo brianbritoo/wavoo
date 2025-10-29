@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import Phone from '@/components/Phone';
+import Phone from '../../components/Phone';
 
 type Trip = {
   id: string; titulo: string; destino: string;

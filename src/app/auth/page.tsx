@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import Phone from '../../components/Phone';
+
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');

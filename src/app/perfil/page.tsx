@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import Phone from '@/components/Phone';
+import Phone from '../../components/Phone';
 
 export default function Perfil() {
   const [loading, setLoading] = useState(true);
