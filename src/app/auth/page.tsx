@@ -1,69 +1,120 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import Phone from '../../components/Phone';
 
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function AuthPage() {
-  const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const router = useRouter();
+  const [mode, setMode] = useState<'login'|'signup'>('login');
+  const [idField, setIdField] = useState(''); // email o usuario
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState(''); // solo en signup
+  const [email, setEmail] = useState(''); // solo en signup
+  const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = '/explorar';
-    });
-  }, []);
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) router.replace('/viajes');
+    })();
+  }, [router]);
 
-  async function sendMagic() {
-    setErr(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin }
-    });
-    if (error) setErr(error.message); else setSent(true);
+  async function login() {
+    setStatus(null);
+    try {
+      const id = idField.trim();
+      let loginEmail = id;
+
+      if (!id.includes('@')) {
+        // Han escrito "usuario". Buscamos su email en profiles.
+        const { data, error } = await supabase
+          .from('profiles').select('id')
+          .eq('username', id).single();
+        if (error || !data) throw new Error('Usuario no encontrado');
+        // Obtenemos email del auth user
+        const { data: prof } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', id)
+        .single();
+      loginEmail = prof?.email;
+      
+
+      const { error: errLogin } = await supabase.auth.signInWithPassword({
+        email: loginEmail, password
+      });
+      if (errLogin) throw errLogin;
+
+      // Ruta según profile.completed
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: p } = await supabase.from('profiles').select('completed').eq('id', user!.id).single();
+      router.replace(p?.completed ? '/viajes' : '/onboarding');
+    } catch (e: any) {
+      setStatus(e.message || 'Error de acceso');
+    }
+  }
+
+  async function signup() {
+    setStatus(null);
+    try {
+      if (!email.includes('@')) throw new Error('Introduce un email válido');
+      if (username.trim().length < 3) throw new Error('Usuario mínimo 3 caracteres');
+
+      // Alta de cuenta
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      if (error) throw error;
+
+      setStatus('Te hemos enviado un enlace de confirmación. Revisa tu correo.');
+      // El perfil se crea via trigger; el username lo guardaremos en onboarding
+    } catch (e: any) {
+      setStatus(e.message || 'No se pudo registrar');
+    }
   }
 
   return (
-    <main className="min-h-dvh bg-white flex flex-col">
-      {/* Cabecera turquesa con curva inferior y logo */}
-      <div className="relative w-full">
-        <div className="h-40 bg-[#14b8a6] rounded-b-[2rem] w-full" />
-        <div className="absolute top-8 left-0 right-0 flex items-center justify-center">
-          <img
-            src="/wavoo_logo.svg"
-            alt="Wavoo"
-            className="h-10 w-auto"
-            style={{ filter: 'brightness(0) invert(1)' }} /* convierte el logo a blanco */
-          />
+    <div className="max-w-md mx-auto p-6">
+      <div className="flex gap-4 mb-6">
+        <button className={mode==='login'?'font-semibold':''} onClick={()=>setMode('login')}>Iniciar sesión</button>
+        <button className={mode==='signup'?'font-semibold':''} onClick={()=>setMode('signup')}>Crear cuenta</button>
+      </div>
+
+      {mode === 'login' ? (
+        <div className="space-y-3">
+          <input className="w-full border rounded-lg p-2"
+            placeholder="Email o usuario"
+            value={idField} onChange={e=>setIdField(e.target.value)} />
+          <input className="w-full border rounded-lg p-2" type="password"
+            placeholder="Contraseña"
+            value={password} onChange={e=>setPassword(e.target.value)} />
+          <button className="w-full bg-brand text-white rounded-xl py-3" onClick={login}>
+            Entrar
+          </button>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-3">
+          <input className="w-full border rounded-lg p-2"
+            placeholder="Email"
+            value={email} onChange={e=>setEmail(e.target.value)} />
+          <input className="w-full border rounded-lg p-2"
+            placeholder="Usuario"
+            value={username} onChange={e=>setUsername(e.target.value)} />
+          <input className="w-full border rounded-lg p-2" type="password"
+            placeholder="Contraseña"
+            value={password} onChange={e=>setPassword(e.target.value)} />
+          <button className="w-full bg-brand text-white rounded-xl py-3" onClick={signup}>
+            Crear cuenta
+          </button>
+        </div>
+      )}
 
-      {/* Contenido */}
-      <div className="flex-1 px-6 py-6 max-w-md w-full mx-auto">
-        <h1 className="text-3xl font-bold text-[#14b8a6]">Iniciar sesión</h1>
-        <p className="mt-1 text-gray-600">Accede con tu correo (te enviaremos un enlace)</p>
-
-        <input
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          placeholder="tucorreo@uv.es"
-          value={email}
-          onChange={e=>setEmail(e.target.value)}
-          className="mt-6 w-full rounded-xl border px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#14b8a6]"
-        />
-
-        <button
-          onClick={sendMagic}
-          className="mt-4 w-full rounded-xl bg-[#14b8a6] text-white py-3 text-base font-medium active:scale-[.99]">
-          Continuar
-        </button>
-
-        <p className="mt-3 text-sm text-gray-500">
-          {sent ? 'Enlace enviado ✅ Revisa tu correo' : (err ? 'Error: ' + err : '¿No tienes una cuenta? Regístrate al entrar')}
-        </p>
-      </div>
-    </main>
+      {status && <p className="text-sm mt-3">{status}</p>}
+    </div>
   );
 }
